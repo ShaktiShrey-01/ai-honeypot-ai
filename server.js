@@ -20,6 +20,7 @@ const getStrategy = (message) => {
 
 // 3. API Endpoint Submission (POST /api/honeypot)
 app.post('/api/honeypot', async (req, res) => {
+    console.log("Request Received:", req.body);
     try {
         const { message, scammerId } = req.body;
 
@@ -72,6 +73,7 @@ app.post('/api/honeypot', async (req, res) => {
         });
 
     } catch (err) {
+        console.error("CRASH ERROR:", err);
         res.status(500).json({ error: err.message });
     }
 });
