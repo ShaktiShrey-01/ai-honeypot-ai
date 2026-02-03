@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Env secrets
+.env
+
+# Logs
+npm-debug.log*
+logs/
+*.log
+
+# Misc
+.DS_Store
