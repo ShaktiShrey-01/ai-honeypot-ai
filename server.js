@@ -24,53 +24,38 @@ app.post('/api/honeypot', async (req, res) => {
     console.log("📥 Incoming Message:", req.body.message);
 
     try {
+        // --- DEFENSIVE FIX STARTS HERE ---
         const { message } = req.body;
-        if (!message) return res.status(400).json({ error: "No message provided" });
+        const safeMessage = typeof message === 'string' ? message : "";
 
-        // 1. Initialize AI with the latest stable alias
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error("GEMINI_API_KEY is missing in Environment Variables");
+        // 1. Extraction using the safeMessage
+        const upis = safeMessage.match(/[a-zA-Z0-9.\-_]+@\w+/g) || [];
+        const accounts = safeMessage.match(/\b\d{9,18}\b/g) || [];
+        const links = safeMessage.match(/https?:\/\/[^\s]+/g) || [];
+
+        // 2. AI Logic (Only call AI if there is a message to reply to)
+        let aiReply = "Oh dear, I didn't catch that. Could you repeat it?";
+        if (safeMessage.length > 0) {
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+            const result = await model.generateContent(`Act as Mrs. Lakshmi, reply to: ${safeMessage}`);
+            const response = await result.response;
+            aiReply = response.text();
         }
-        
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-flash-latest",
-            generationConfig: { 
-                temperature: 0.7,
-                topP: 0.8,
-                maxOutputTokens: 200 
-            }
-        });
 
-        // 2. Generate Content (updated prompt)
-        const result = await model.generateContent(
-            `Act as Mrs. Lakshmi, a 70-year-old grandmother. Your goal is to politely keep the scammer talking so we can extract their payment details. Reply to: "${message}"`
-        );
-        const response = await result.response;
-        const aiReply = response.text();
-        const finalReply = aiReply && aiReply.length > 0 
-            ? aiReply 
-            : "Oh dear, my internet is acting up. Let me find my glasses...";
-
-        console.log("✅ AI Success:", aiReply);
-
-        // 3. Extraction & Response
+        // 3. Success Response
         res.status(200).json({
             classification: "Scam Detected",
-            next_reply: finalReply,
+            next_reply: aiReply,
             extracted_intelligence: {
-                upi_ids: message.match(/[a-zA-Z0-9.\-_]+@\w+/g) || [],
-                bank_accounts: message.match(/\b\d{9,18}\b/g) || [],
-                phishing_links: message.match(/https?:\/\/[^\s]+/g) || []
+                upi_ids: upis,
+                bank_accounts: accounts,
+                phishing_links: links
             }
         });
 
     } catch (err) {
-        console.log("❌ ERROR:", err.message);
-        res.status(500).json({ 
-            error: "Honeypot Logic Error", 
-            details: err.message 
-        });
+        console.error("🔥 Error caught:", err.message);
+        res.status(500).json({ error: "Internal Error", details: err.message });
     }
 });
 
