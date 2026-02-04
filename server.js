@@ -11,32 +11,39 @@ if (!apiKey) console.error("❌ ERROR: GEMINI_API_KEY is missing!");
 const genAI = new GoogleGenerativeAI(apiKey);
 
 app.post('/api/honeypot', async (req, res) => {
+    // 1. LOG THE REQUEST
+    console.log("📥 Incoming Message:", req.body && req.body.message);
     try {
-        const { message } = req.body;
+        const { message } = req.body || {};
         if (!message) return res.status(400).json({ error: "No message provided" });
 
-        // 1. Simple Intelligence Extraction
-        const upis = message.match(/[a-zA-Z0-9.\-_]+@\w+/g) || [];
+        // 2. TEST THE KEY
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("API KEY IS MISSING IN ENVIRONMENT VARIABLES");
+        }
 
-        // 2. AI Logic with Safety Catch
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent(`Act as Mrs. Lakshmi, reply to: ${message}`);
-        const aiReply = result.response.text();
 
-        // 3. Success Response
+        // 3. ATTEMPT AI CALL
+        const result = await model.generateContent(`Act as a victim: ${message}`);
+        const response = await result.response;
+        const aiReply = response.text();
+
+        console.log("✅ AI Success:", aiReply);
+
         res.status(200).json({
             classification: "Scam Detected",
             next_reply: aiReply,
-            extracted_intelligence: { upi_ids: upis, bank_accounts: [], phishing_links: [] }
+            extracted_intelligence: { upi_ids: [], bank_accounts: [], phishing_links: [] }
         });
 
     } catch (err) {
-        // THIS CATCHES THE 500 ERROR AND TELLS YOU WHY
-        console.error("🔥 Server Crash:", err.message);
-        res.status(500).json({ 
-            error: "Deep Error Detected", 
-            details: err.message,
-            hint: "Check if your API Key is correctly added to Render Environment Variables."
+        // Return detailed error for diagnostics
+        console.log("❌ DETAILED ERROR:", err.stack);
+        res.status(500).json({
+            error: "Logic Error",
+            message: err.message,
+            stack: err.stack
         });
     }
 });
