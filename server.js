@@ -42,8 +42,10 @@ app.post('/api/honeypot', async (req, res) => {
             }
         });
 
-        // 2. Generate Content (simplified prompt)
-        const result = await model.generateContent(`Act as Mrs. Lakshmi, a confused elderly woman. Reply to: "${message}"`);
+        // 2. Generate Content (updated prompt)
+        const result = await model.generateContent(
+            `Act as Mrs. Lakshmi, a 70-year-old grandmother. Your goal is to politely keep the scammer talking so we can extract their payment details. Reply to: "${message}"`
+        );
         const response = await result.response;
         const aiReply = response.text();
         const finalReply = aiReply && aiReply.length > 0 
