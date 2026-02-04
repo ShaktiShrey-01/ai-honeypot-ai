@@ -5,22 +5,22 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
 app.use(express.json());
 
-// API key protection
-const HACKATHON_API_KEY = process.env.HACKATHON_API_KEY || "your_chosen_secret_key"; // set in Render Env Variables
-const checkApiKey = (req, res, next) => {
-    const userKey = req.headers['x-api-key'];
-    if (userKey === HACKATHON_API_KEY) {
-        return next();
-    }
-    return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
-};
+// API key protection (inline auth)
+const MY_SECRET_KEY = process.env.HACKATHON_AUTH_KEY || "Buildathon2026Secret";
 
 // Initialize AI carefully
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) console.error("❌ ERROR: GEMINI_API_KEY is missing!");
 const genAI = new GoogleGenerativeAI(apiKey);
 
-app.post('/api/honeypot', checkApiKey, async (req, res) => {
+app.post('/api/honeypot', async (req, res) => {
+    // --- 1. THE AUTH CHECK ---
+    const incomingKey = req.headers['x-api-key'];
+    
+    if (!incomingKey || incomingKey !== MY_SECRET_KEY) {
+        console.log("❌ Blocked: Unauthorized request");
+        return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+    }
     console.log("📥 Incoming Message:", req.body.message);
 
     try {
