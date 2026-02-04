@@ -42,23 +42,20 @@ app.post('/api/honeypot', async (req, res) => {
             }
         });
 
-        // 2. Generate Content
-        const result = await model.generateContent(`
-            Persona: You are Mrs. Lakshmi, a 70-year-old grandmother from India. 
-            Traits: Polite, slightly technologically challenged, very talkative about her grandson.
-            Task: Engage the scammer to keep them talking.
-            Scammer Message: "${message}"
-        `);
-        
+        // 2. Generate Content (simplified prompt)
+        const result = await model.generateContent(`Act as Mrs. Lakshmi, a confused elderly woman. Reply to: "${message}"`);
         const response = await result.response;
         const aiReply = response.text();
+        const finalReply = aiReply && aiReply.length > 0 
+            ? aiReply 
+            : "Oh dear, my internet is acting up. Let me find my glasses...";
 
         console.log("✅ AI Success:", aiReply);
 
         // 3. Extraction & Response
         res.status(200).json({
             classification: "Scam Detected",
-            next_reply: aiReply,
+            next_reply: finalReply,
             extracted_intelligence: {
                 upi_ids: message.match(/[a-zA-Z0-9.\-_]+@\w+/g) || [],
                 bank_accounts: message.match(/\b\d{9,18}\b/g) || [],
