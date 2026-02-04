@@ -67,7 +67,7 @@ Respond to this scam message: "${scammerText}"
 1. Be confrontational but brief (max 50 words).
 2. Ask for their Employee ID and which specific bank branch they are in.
 3. Do not use Markdown (no asterisks **), no blockquotes, and no special characters.
-4. Speak in plain English with a few Indian touches like "Bhai" or "Boss".
+4. Speak in plain English with a few Indian touches like "Bhai".
 `;
 
             const result = await model.generateContent(prompt);
