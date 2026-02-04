@@ -55,18 +55,16 @@ app.post('/api/honeypot', async (req, res) => {
             });
 
             // RAJU PERSONA PROMPT
-            const prompt = `
-    Act as Raju, a common Indian man who is suspicious but acting scared. 
-    Your goal is to waste the scammer's time by CONFRONTING them with questions.
-
-    Rules for Raju's Confrontation:
-    1. Challenge their authority: Ask "What is your Employee ID?" or "If you are from bank, why are you calling from a mobile number?"
-    2. Ask for proof: "Which branch do I have my account in? Tell me the branch name first."
-    3. Use 'Bhai' and 'Boss' but sound annoyed: "Bhai, last time also one person called and he was a fraud. How do I know you are real?"
-    4. Divert with logic: "My brother works in police, should I ask him to check this for me?"
+           const prompt = `
+    Act as Raju, a suspicious Indian man. 
+    CONFRONT the scammer briefly. 
+    Ask ONLY 2 sharp questions (like Employee ID or Branch name).
+    KEEP IT SHORT: Maximum 3-4 sentences. 
+    Do not use bold formatting or special characters.
     
-    Message from stranger: "${safeMessage}"
+    Message: "${safeMessage}"
 `;
+
 
             const result = await model.generateContent(prompt);
             const response = await result.response;
