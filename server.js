@@ -48,7 +48,7 @@ app.post('/api/honeypot', async (req, res) => {
 
         if (safeMessage) {
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
+                model: "gemini-flash-latest",
                 // Safety settings: Ensure AI responds even to "dangerous" scam text
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
