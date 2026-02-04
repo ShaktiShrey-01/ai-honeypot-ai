@@ -14,6 +14,15 @@ app.use(express.text({ type: '*/*' }));
 const MY_SECRET_KEY = process.env.HACKATHON_AUTH_KEY || "Buildathon2026Secret";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// This allows UptimeRobot and Browsers to see the "Active" status
+app.get('/api/honeypot', (req, res) => {
+    res.status(200).json({
+        status: "Active",
+        message: "Agentic Scam Extractor is running. Please use POST for API calls.",
+        persona: "Mrs. Lakshmi"
+    });
+});
+
 app.post('/api/honeypot', async (req, res) => {
     // A. AUTH CHECK
     const incomingKey = req.headers['x-api-key'];
