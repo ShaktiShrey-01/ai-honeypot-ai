@@ -22,7 +22,7 @@ app.post('/api/honeypot', async (req, res) => {
             throw new Error("API KEY IS MISSING IN ENVIRONMENT VARIABLES");
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         // 3. ATTEMPT AI CALL
         const result = await model.generateContent(`Act as a victim: ${message}`);
