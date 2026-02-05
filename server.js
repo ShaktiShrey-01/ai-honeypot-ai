@@ -19,65 +19,56 @@ app.get('/', (req, res) => res.status(200).send("System Online."));
 // --- 2. UPDATED ENDPOINT ---
 app.post('/api/honeypot', async (req, res) => {
     const incomingKey = req.headers['x-api-key'];
-    if (incomingKey !== MY_SECRET_KEY) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
+    if (incomingKey !== MY_SECRET_KEY) return res.status(401).json({ error: "Unauthorized" });
 
     try {
-        // Log exactly what the server sees to the Render console
-        console.log("📥 Raw Body Type:", typeof req.body);
-        console.log("📥 Raw Body Content:", req.body);
-
-        let data = req.body;
-
-        // FIX: If the body arrived as a string, manually parse it
-        if (typeof data === 'string') {
-            try {
-                data = JSON.parse(data);
-            } catch (e) {
-                console.log("Not a JSON string, using raw text.");
-            }
-        }
-
-        // 3. TARGETED EXTRACTION
         let scammerText = "";
-        if (data && data.message && data.message.text) {
-            scammerText = data.message.text;
-        } else if (data && data.text) {
-            scammerText = data.text;
-        } else if (typeof data === 'string') {
-            scammerText = data;
-        }
+        const data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        
+        if (data?.message?.text) scammerText = data.message.text;
+        else if (data?.text) scammerText = data.text;
+        else scammerText = "Hello?";
 
-        // 4. PREVENT EMPTY RESPONSES
-        if (!scammerText || String(scammerText).trim() === "") {
-            return res.status(200).json({
-                status: "success",
-                reply: "Hello? I am in a meeting. Who is this?"
+        let aiReply = "";
+        
+        try {
+            // Updated to the most stable model string
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                safetySettings: [
+                    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+                ]
             });
+
+            const prompt = `Act as Raju, a suspicious man. The person says: "${scammerText}". 
+            Rules: 
+            1. Be very confrontational. 
+            2. If they name a branch, tell them you are going there right now to meet them. 
+            3. Ask for their Employee ID. 
+            4. Max 25 words. No Markdown. 
+            5. Gender-neutral: use "Friend" or "you". No Bhai/Sir/Ji/Madam.`;
+
+            const result = await model.generateContent(prompt);
+            aiReply = result.response.text().trim().replace(/\*/g, '');
+        } catch (aiErr) {
+            // MOCK FAILSAFE: If Gemini fails, Raju still fights back!
+            const fallbacks = [
+                "Friend, I don't believe you. Give me your Employee ID right now.",
+                "If you are at that branch, stay there. I am coming with the police now.",
+                "I am calling the main manager. What did you say your name was?",
+                "My mobile is fine. Your story is fake. Which desk are you sitting at?"
+            ];
+            aiReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
         }
 
-        // 5. AI GENERATION
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Act as Raju, a suspicious professional. Respond to: "${scammerText}". 
-                        Rules: Brief (max 20 words), gender-neutral (use 'Friend'), 
-                        ask for Employee ID and Branch. No Markdown. No -ji.`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const aiReply = response.text().trim();
-
-        // 6. FINAL SUCCESS RESPONSE
-        res.status(200).json({
-            status: "success",
-            reply: aiReply
-        });
+        res.status(200).json({ status: "success", reply: aiReply });
 
     } catch (err) {
-        console.error("🔥 Error:", err.message);
-        res.status(200).json({
-            status: "success",
-            reply: "The line is bad. Which branch are you from?"
+        // Ultimate fallback - making it look like a real person being difficult
+        res.status(200).json({ 
+            status: "success", 
+            reply: "Listen, friend. I don't give details on the phone. Who is your supervisor?" 
         });
     }
 });
