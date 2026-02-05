@@ -4,8 +4,9 @@ const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require("@googl
 
 const app = express();
 
-// --- 1. MIDDLEWARE: The order here prevents "Invalid Body" errors ---
-app.use(express.json()); 
+// --- 1. UPDATED MIDDLEWARE ---
+// This ensures we catch the body no matter HOW the hackathon sends it
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: '*/*' })); 
 
@@ -15,59 +16,52 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.get('/', (req, res) => res.status(200).send("System Online."));
 
 // --- 2. THE MAIN ENDPOINT ---
+// --- 2. UPDATED ENDPOINT ---
 app.post('/api/honeypot', async (req, res) => {
-    // Auth Check
     const incomingKey = req.headers['x-api-key'];
     if (incomingKey !== MY_SECRET_KEY) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     try {
-        // Log incoming data for debugging
-        console.log("📥 Raw Body:", req.body);
+        // Log exactly what the server sees to the Render console
+        console.log("📥 Raw Body Type:", typeof req.body);
+        console.log("📥 Raw Body Content:", req.body);
 
-        // 3. BULLETPROOF EXTRACTION
-        let scammerText = "";
-        
-        if (req.body && typeof req.body === 'object') {
-            // Check for the Hackathon's nested format first
-            if (req.body.message && req.body.message.text) {
-                scammerText = req.body.message.text;
-            } else if (req.body.text) {
-                scammerText = req.body.text;
+        let data = req.body;
+
+        // FIX: If the body arrived as a string, manually parse it
+        if (typeof data === 'string') {
+            try {
+                data = JSON.parse(data);
+            } catch (e) {
+                console.log("Not a JSON string, using raw text.");
             }
-        } else if (typeof req.body === 'string') {
-            scammerText = req.body;
         }
 
-        // 4. PREVENT EMPTY RESPONSE ERROR
+        // 3. TARGETED EXTRACTION
+        let scammerText = "";
+        if (data && data.message && data.message.text) {
+            scammerText = data.message.text;
+        } else if (data && data.text) {
+            scammerText = data.text;
+        } else if (typeof data === 'string') {
+            scammerText = data;
+        }
+
+        // 4. PREVENT EMPTY RESPONSES
         if (!scammerText || String(scammerText).trim() === "") {
             return res.status(200).json({
                 status: "success",
-                reply: "I am currently in a meeting. Please state your identity and branch name."
+                reply: "Hello? I am in a meeting. Who is this?"
             });
         }
 
-        // 5. AI GENERATION (Global Gender-Neutral)
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash", // Using stable version string
-            safetySettings: [
-                { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }
-            ]
-        });
-
-        const prompt = `
-            Act as Raju, a suspicious professional busy at work. 
-            Respond to: "${scammerText}"
-            
-            Rules:
-            1. Be brief (max 30 words).
-            2. Use ONLY gender-neutral terms like "Friend" or "Someone". 
-            3. FORBIDDEN: Bhai, Sir, Madam, Officer, Boss, Sister, -ji.
-            4. Ask for their Employee ID and their specific bank branch location.
-            5. No Markdown (**). Plain text only.
-        `;
+        // 5. AI GENERATION
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `Act as Raju, a suspicious professional. Respond to: "${scammerText}". 
+                        Rules: Brief (max 20 words), gender-neutral (use 'Friend'), 
+                        ask for Employee ID and Branch. No Markdown. No -ji.`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -83,7 +77,7 @@ app.post('/api/honeypot', async (req, res) => {
         console.error("🔥 Error:", err.message);
         res.status(200).json({
             status: "success",
-            reply: "I cannot talk right now. Which branch are you calling from?"
+            reply: "The line is bad. Which branch are you from?"
         });
     }
 });
